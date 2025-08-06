@@ -13,12 +13,8 @@
 
 - [📊 Project Overview](#-project-overview)
 - [📂 Project Structure](#-project-structure)
-- [⚙️ Features](#️-features)
-- [🛠️ Tech Stack](#️-tech-stack)
-- [🚀 Installation & Setup](#-installation--setup)
-- [📈 Model Output](#-model-output)
-- [🎯 Future Enhancements](#-future-enhancements)
-- [📬 Contact](#-contact)
+
+
 
 ---
 
