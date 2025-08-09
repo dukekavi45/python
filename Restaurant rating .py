@@ -1,71 +1,127 @@
-
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, r2_score
 import matplotlib.pyplot as plt
-import seaborn as sns
+import os
 
-# Load the dataset
-df = pd.read_csv('Dataset .csv')
+def recommend_restaurants(df, city=None, cuisine=None, min_rating=4.0, top_n=10):
+    """
+    Recommends restaurants based on specified criteria.
 
-print("--- Starting Data Preprocessing ---")
+    Args:
+        df (pd.DataFrame): The DataFrame containing restaurant data.
+        city (str, optional): Filter by city. Defaults to None.
+        cuisine (str, optional): Filter by cuisine. Defaults to None.
+        min_rating (float, optional): Minimum aggregate rating. Defaults to 4.0.
+        top_n (int, optional): Number of top recommendations to return. Defaults to 10.
 
-# Drop irrelevant columns
-df = df.drop(['Restaurant ID', 'Restaurant Name', 'Country Code', 'City', 'Address', 'Locality', 'Locality Verbose', 'Longitude', 'Latitude', 'Currency', 'Rating color', 'Rating text', 'Switch to order menu'], axis=1)
+    Returns:
+        pd.DataFrame: A DataFrame of recommended restaurants.
+    """
+    print("\n--- Generating Restaurant Recommendations ---")
+    filtered_df = df[df['Aggregate rating'] >= min_rating].copy()
 
-# Handle missing values in 'Cuisines'
-df['Cuisines'].fillna('No Cuisines', inplace=True)
+    if city:
+        filtered_df = filtered_df[filtered_df['City'].str.contains(city, case=False, na=False)]
+        print(f"Filtering by City: {city}")
 
-# Encode categorical variables
-le = LabelEncoder()
-df['Has Table booking'] = le.fit_transform(df['Has Table booking'])
-df['Has Online delivery'] = le.fit_transform(df['Has Online delivery'])
-df['Is delivering now'] = le.fit_transform(df['Is delivering now'])
+    if cuisine:
+        filtered_df = filtered_df[filtered_df['Cuisines'].str.contains(cuisine, case=False, na=False)]
+        print(f"Filtering by Cuisine: {cuisine}")
 
-# One-hot encode 'Cuisines'
-df = pd.get_dummies(df, columns=['Cuisines'], prefix='Cuisine')
+    if filtered_df.empty:
+        print("No restaurants found matching your criteria. Try adjusting the filters.")
+        return pd.DataFrame()
 
-# Split the data into features (X) and target (y)
-X = df.drop('Aggregate rating', axis=1)
-y = df['Aggregate rating']
+    
+    recommended_restaurants = filtered_df.sort_values(
+        by=['Aggregate rating', 'Votes'],
+        ascending=[False, False]
+    ).head(top_n)
 
-# Split the data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-print("--- Data Preprocessing Complete ---")
+    print(f"\nTop {len(recommended_restaurants)} Recommended Restaurants (Rating >= {min_rating}):")
+    if not recommended_restaurants.empty:
+        
+        display_cols = [
+            'Restaurant Name',
+            'City',
+            'Cuisines',
+            'Aggregate rating',
+            'Rating text',
+            'Votes',
+            'Average Cost for two',
+            'Currency'
+        ]
+        
+        display_cols = [col for col in display_cols if col in recommended_restaurants.columns]
+        print(recommended_restaurants[display_cols].to_string(index=False))
+    else:
+        print("No recommendations to display.")
 
-print("--- Training Model ---")
-model = RandomForestRegressor(n_estimators=100, random_state=42)
-model.fit(X_train, y_train)
+    return recommended_restaurants
 
-y_pred = model.predict(X_test)
+def plot_rating_distribution(df):
+    """
+    Generates and displays a pie chart of restaurant rating colors.
 
-mse = mean_squared_error(y_test, y_pred)
-r2 = r2_score(y_test, y_pred)
+    Args:
+        df (pd.DataFrame): The DataFrame containing restaurant data.
+    """
+    print("\n--- Generating Rating Distribution Pie Chart ---")
+    rating_counts = df['Rating color'].value_counts()
 
-print(f"Mean Squared Error: {mse}")
-print(f"R-squared: {r2}")
-print("--- Model Training & Evaluation Complete ---")
+    if rating_counts.empty:
+        print("No rating data to plot.")
+        return
 
+    plt.figure(figsize=(8, 8))
+    plt.pie(
+        rating_counts,
+        labels=rating_counts.index,
+        autopct='%1.1f%%',
+        startangle=140,
+        colors=['#4CAF50', '#8BC34A', '#FFC107', '#FF9800', '#F44336', '#9E9E9E'] # Example colors
+    )
+    plt.title('Distribution of Restaurant Rating Colors')
+    plt.axis('equal') 
+    plt.show()
+    print("Pie chart displayed in a new window.")
 
-print("--- Generating Plot ---")
-# Get feature importances
-feature_importances = pd.DataFrame({'feature': X.columns, 'importance': model.feature_importances_})
-feature_importances = feature_importances.sort_values('importance', ascending=False).head(10)
+def main():
+    """Main function to run the restaurant recommendation project."""
+    file_path = 'Dataset .csv' 
 
-# Plot the graph
-plt.figure(figsize=(10, 6))
-sns.barplot(x='importance', y='feature', data=feature_importances)
-plt.title('Top 10 Feature Importances')
-plt.show()
+    if not os.path.exists(file_path):
+        print(f"Error: The file '{file_path}' was not found.")
+        print("Please ensure 'Dataset .csv' is in the same directory as the script.")
+        return
 
+    try:
+        df = pd.read_csv(file_path)
+        print(f"Successfully loaded '{file_path}' with {len(df)} entries.")
+    except Exception as e:
+        print(f"Error loading CSV file: {e}")
+        return
 
-# Plot the graph
-plt.figure(figsize=(10, 6))
-sns.barplot(x='importance', y='feature', data=feature_importances)
-plt.title('Top 10 Feature Importances')
+    
+    recommend_restaurants(df, top_n=5)
 
-plt.savefig('feature_importances.png') 
+ 
+    recommend_restaurants(df, city='Istanbul', cuisine='Turkish', top_n=3)
 
-print("Plot has been saved as feature_importances.png")
+    recommend_restaurants(df, city='New Delhi', top_n=5)
+   
+    recommend_restaurants(df,city='chennai',top_n=5)
+    
+    recommend_restaurants(df,city='coimbatore',top_n=5)
+    
+    recommend_restaurants(df,city='goa',top_n=5)
+    
+    
+   
+    
+    
+    
+
+    plot_rating_distribution(df)
+
+if __name__ == "__main__":
+    main()
